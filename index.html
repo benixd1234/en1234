@@ -59,6 +59,11 @@
   .tag { display:inline-block; font-size:11px; font-weight:400; padding:1px 7px; border-radius:4px; margin-top:3px; }
   .tag.ps { background:var(--blue-soft); color:var(--blue-text); }
   .tag.both { background:var(--green-soft); color:var(--green-text); }
+  h3.sheet { font-size:12px; font-weight:600; color:var(--muted); margin:10px 0 6px; }
+  .pc-card { border:1px solid var(--line); border-left:3px solid var(--blue); border-radius:6px; padding:12px 14px 2px; margin-bottom:14px; }
+  .pc-card h2 { font-size:16px; text-transform:none; letter-spacing:0; color:var(--blue-text); margin:0 0 4px; }
+  .summary { margin:4px 0 12px; }
+  .warn { color:#d9822b; font-weight:600; }
   .hidden-key { color:var(--muted); cursor:pointer; text-decoration:underline dotted; }
   @media (max-width: 900px) {
     .layout { grid-template-columns:1fr; height:auto; padding:12px; }
@@ -81,8 +86,7 @@
 <header>
   <h1>Helpdesk segéd</h1>
   <nav>
-    <button data-tab="sablonok" class="active">Hibajegy-sablonok</button>
-    <button data-tab="eszkozok">PC-tulajdonos kereső</button>
+    <button data-tab="eszkozok" class="active">PC-tulajdonos kereső</button>
     <button data-tab="parancsok">Távoli gép parancsok</button>
   </nav>
   <button id="themeBtn" title="Világos / sötét mód">Sötét mód</button>
@@ -90,27 +94,8 @@
 
 <div class="layout">
 <main>
-  <!-- 1. Hibajegy-sablonok -->
-  <section id="sablonok" class="active">
-    <h2>Hibajegy-sablonok</h2>
-    <div class="row">
-      <select id="tplSelect"></select>
-      <button class="btn light" id="tplEditBtn">Sablonok szerkesztése</button>
-    </div>
-    <div id="tplFields"></div>
-    <div class="preview" id="tplPreview"></div>
-    <div class="row" style="margin-top:8px">
-      <button class="btn green" id="tplCopy">Másolás a vágólapra</button>
-    </div>
-    <div id="tplEditor" style="display:none; margin-top:14px">
-      <p class="muted">Formátum: minden sablon egy <b>### Sablon neve</b> sorral kezdődik. A kitöltendő mezőket így jelöld: <b>{{Mező neve}}</b>.</p>
-      <textarea id="tplText" style="min-height:300px"></textarea>
-      <div class="row" style="margin-top:8px"><button class="btn" id="tplSave">Mentés</button></div>
-    </div>
-  </section>
-
   <!-- 2. PC-tulajdonos kereső -->
-  <section id="eszkozok">
+  <section id="eszkozok" class="active">
     <h2>PC-tulajdonos kereső</h2>
     <div class="row">
       <button class="btn" id="hwPick">Hardverlista betöltése</button>
@@ -119,7 +104,7 @@
       <span class="muted" id="hwStatus">Nincs betöltve. Válaszd ki: \\smbclust\db\Hardverlista2025_-_Ezt_használd.xlsb</span>
     </div>
     <div class="row">
-      <input id="hwSearch" placeholder="Keresés: név, IRO szám (pl. D2012), IP, MAC, login név, szoba...">
+      <textarea id="hwSearch" rows="2" style="min-height:0;font-family:inherit" placeholder="Egy vagy több gépnév (pl. D2313 D2122 N2177), vagy bármi más: név, IP, MAC, login név, szoba..."></textarea>
     </div>
     <div id="hwResults"></div>
   </section>
@@ -178,62 +163,6 @@ function setTheme(t) { document.documentElement.dataset.theme = t; $('themeBtn')
 setTheme(document.documentElement.dataset.theme || 'light');
 $('themeBtn').onclick = () => { const t = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; setTheme(t); store.set('theme', t); };
 
-// ---------- 1. Hibajegy-sablonok ----------
-const DEFAULT_TPL = `### Jelszó-visszaállítás
-Bejelentő: {{Név}}
-Probléma: A felhasználó nem tudott bejelentkezni, a jelszava lejárt / zárolva lett.
-Elvégzett lépések: Azonosítás után a jelszót visszaállítottam, a fiók zárolását feloldottam. Következő bejelentkezéskor új jelszót kell megadnia.
-Eredmény: A felhasználó sikeresen bejelentkezett.
-
-### Nyomtatóhiba
-Bejelentő: {{Név}}
-Nyomtató: {{Nyomtató}}
-Probléma: {{Hibajelenség}}
-Elvégzett lépések: Nyomtatási sor törlése, nyomtató újraindítása, illesztőprogram ellenőrzése.
-Eredmény: A nyomtatás helyreállt.
-
-### Hálózati hiba
-Bejelentő: {{Név}}
-Gép: {{Gépnév}}
-Probléma: A gépen nem volt hálózati kapcsolat / nem érhetők el a hálózati meghajtók.
-Elvégzett lépések: Kábel és csatlakozás ellenőrzése, ipconfig /release, /renew, DNS-gyorsítótár ürítése.
-Eredmény: A kapcsolat helyreállt.
-
-### Szoftvertelepítés
-Bejelentő: {{Név}}
-Gép: {{Gépnév}}
-Kért szoftver: {{Szoftver}}
-Elvégzett lépések: A szoftvert telepítettem, az indulását ellenőriztem.
-Eredmény: A szoftver használatra kész.`;
-
-function parseTemplates(text) {
-  return text.split(/^###\s*/m).map(s => s.trim()).filter(Boolean).map(block => {
-    const i = block.indexOf('\n');
-    return { name: (i < 0 ? block : block.slice(0, i)).trim(), body: i < 0 ? '' : block.slice(i + 1).trim() };
-  });
-}
-let tplText = store.get('templates', DEFAULT_TPL), templates = parseTemplates(tplText), tplValues = {};
-function renderTplSelect() {
-  $('tplSelect').innerHTML = templates.map((t, i) => `<option value="${i}">${esc(t.name)}</option>`).join('');
-  renderTplFields();
-}
-function renderTplFields() {
-  const t = templates[$('tplSelect').value]; if (!t) { $('tplFields').innerHTML = ''; $('tplPreview').textContent = ''; return; }
-  const fields = [...new Set([...t.body.matchAll(/\{\{(.+?)\}\}/g)].map(m => m[1]))];
-  $('tplFields').innerHTML = fields.map(f => `<div class="row"><label>${esc(f)}</label><input data-field="${esc(f)}" value="${esc(tplValues[f] || '')}"></div>`).join('');
-  $('tplFields').querySelectorAll('input').forEach(inp => inp.oninput = () => { tplValues[inp.dataset.field] = inp.value; renderTplPreview(); });
-  renderTplPreview();
-}
-function renderTplPreview() {
-  const t = templates[$('tplSelect').value]; if (!t) return;
-  $('tplPreview').textContent = t.body.replace(/\{\{(.+?)\}\}/g, (_, f) => tplValues[f] || `[${f}]`);
-}
-$('tplSelect').onchange = renderTplFields;
-$('tplCopy').onclick = () => copy($('tplPreview').textContent);
-$('tplEditBtn').onclick = () => { const e = $('tplEditor'); e.style.display = e.style.display === 'none' ? 'block' : 'none'; $('tplText').value = tplText; };
-$('tplSave').onclick = () => { tplText = $('tplText').value; store.set('templates', tplText); templates = parseTemplates(tplText); renderTplSelect(); $('tplEditor').style.display = 'none'; toast('Sablonok mentve'); };
-renderTplSelect();
-
 // ---------- 4. Mellékek ----------
 const SAMPLE_EXT = 'Minta Péter;IT;1234\nPélda Anna;HR;2345';
 const DEFAULT_EXT = SAMPLE_EXT; // build.py a private/mellekek.txt tartalmával cseréli
@@ -274,21 +203,44 @@ function loadWorkbook(buf, name) {
   $('hwStatus').textContent = `Betöltve: ${name} (${n} sor, ${new Date().toLocaleTimeString('hu')})`;
   renderHw();
 }
+// Gépazonosító (D2313, N2177, FVK0002) vagy IP-cím
+const PC_RE = /^([a-z]{1,4}\d{3,5}|\d{1,3}(\.\d{1,3}){3})$/i;
+const cell = (d, c, i) => SECRET_COL.test(d.headers[i]) && c ? `<td><span class="hidden-key" data-v="${esc(c)}">rejtett</span></td>` : `<td>${esc(c)}</td>`;
+function hwTable(d, rows, title) {
+  const pcCol = d.headers.findIndex(h => /^IRO/i.test(h) || /PC, VK/i.test(h));
+  return `<h3 class="sheet">${esc(title)}</h3><div style="overflow-x:auto"><table><tr>${d.headers.map(h => `<th>${esc(h)}</th>`).join('')}<th></th></tr>` +
+    rows.map(r => `<tr>${r.map((c, i) => cell(d, c, i)).join('')}<td>${pcCol >= 0 && PC_RE.test(r[pcCol]) ? `<button class="btn light" data-pc="${esc(r[pcCol])}">Parancsok</button>` : ''}</td></tr>`).join('') + '</table></div>';
+}
 function renderHw() {
-  const q = norm($('hwSearch').value.trim());
+  const raw = $('hwSearch').value.trim();
   if (!hwData.length) { $('hwResults').innerHTML = ''; return; }
-  if (q.length < 2) { $('hwResults').innerHTML = '<p class="muted">Írj be legalább 2 karaktert.</p>'; return; }
-  const terms = q.split(/\s+/);
+  if (raw.length < 2) { $('hwResults').innerHTML = '<p class="muted">Írj be legalább 2 karaktert.</p>'; return; }
+  const tokens = [...new Set(raw.split(/[\s,;]+/).filter(Boolean).map(t => t.toUpperCase()))];
   let html = '';
-  for (const d of hwData) {
-    const hits = d.rows.filter((r, i) => terms.every(t => d.idx[i].includes(t))).slice(0, 30);
-    if (!hits.length) continue;
-    const pcCol = d.headers.findIndex(h => /^IRO/i.test(h) || /PC, VK/i.test(h));
-    html += `<h2>${esc(d.sheet)} <span class="muted">(${hits.length}${hits.length === 30 ? '+' : ''})</span></h2><div style="overflow-x:auto"><table><tr>${d.headers.map(h => `<th>${esc(h)}</th>`).join('')}<th></th></tr>`;
-    html += hits.map(r => `<tr>${r.map((c, i) => SECRET_COL.test(d.headers[i]) && c ? `<td><span class="hidden-key" data-v="${esc(c)}">rejtett</span></td>` : `<td>${esc(c)}</td>`).join('')}<td>${pcCol >= 0 && r[pcCol] ? `<button class="btn light" data-pc="${esc(r[pcCol])}">Parancsok</button>` : ''}</td></tr>`).join('');
-    html += '</table></div>';
+  if (tokens.every(t => PC_RE.test(t))) {
+    // Gépenkénti mód: minden gépre pontos egyezés az összes lapon
+    const missing = [];
+    for (const t of tokens) {
+      const key = norm(t); let part = '';
+      for (const d of hwData) {
+        const rows = d.rows.filter(r => r.some(c => norm(c) === key));
+        if (rows.length) part += hwTable(d, rows, `${d.sheet} (${rows.length})`);
+      }
+      if (part) html += `<div class="pc-card"><h2>${esc(t)}</h2>${part}</div>`; else missing.push(t);
+    }
+    const found = tokens.length - missing.length;
+    html = `<p class="summary">${tokens.length} gépet ismertem fel, ebből ${found} szerepel a listában.` +
+      (missing.length ? ` <span class="warn">Nincs találat: ${missing.map(esc).join(', ')}</span>` : '') + '</p>' + html;
+  } else {
+    // Szabad szöveges keresés: minden szónak szerepelnie kell a sorban
+    const terms = norm(raw).split(/\s+/);
+    for (const d of hwData) {
+      const hits = d.rows.filter((r, i) => terms.every(t => d.idx[i].includes(t))).slice(0, 30);
+      if (hits.length) html += hwTable(d, hits, `${d.sheet} (${hits.length}${hits.length === 30 ? '+' : ''})`);
+    }
+    html = html || '<p class="muted">Nincs találat.</p>';
   }
-  $('hwResults').innerHTML = html || '<p class="muted">Nincs találat.</p>';
+  $('hwResults').innerHTML = html;
   $('hwResults').querySelectorAll('.hidden-key').forEach(s => s.onclick = () => { s.textContent = s.dataset.v; s.classList.remove('hidden-key'); });
   $('hwResults').querySelectorAll('[data-pc]').forEach(b => b.onclick = () => { $('pcName').value = b.dataset.pc; renderCmds(); showTab('parancsok'); });
 }
