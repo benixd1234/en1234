@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Helpdesk segéd</title>
+<style>
+  :root { --bg:#f4f5f7; --panel:#fff; --text:#1d2330; --muted:#6b7280; --line:#dde1e7; --accent:#2563eb; --ok:#16a34a; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:14px/1.45 "Segoe UI", system-ui, sans-serif; background:var(--bg); color:var(--text); }
+  header { display:flex; align-items:center; gap:16px; padding:10px 16px; background:#1e293b; color:#fff; }
+  header h1 { font-size:16px; margin:0; }
+  nav button { background:none; border:0; color:#cbd5e1; padding:6px 10px; border-radius:6px; cursor:pointer; font:inherit; }
+  nav button.active, nav button:hover { background:#334155; color:#fff; }
+  .layout { display:grid; grid-template-columns:1fr 300px; gap:12px; padding:12px; height:calc(100vh - 48px); }
+  main, aside { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:14px; overflow:auto; }
+  section { display:none; } section.active { display:block; }
+  h2 { font-size:15px; margin:0 0 10px; }
+  input, select, textarea { font:inherit; padding:6px 8px; border:1px solid var(--line); border-radius:6px; width:100%; }
+  textarea { min-height:120px; font-family:Consolas, monospace; }
+  button.btn { font:inherit; padding:6px 12px; border:1px solid var(--accent); background:var(--accent); color:#fff; border-radius:6px; cursor:pointer; }
+  button.btn.light { background:#fff; color:var(--accent); }
+  .row { display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap; }
+  .row > input, .row > select { flex:1; min-width:160px; }
+  .muted { color:var(--muted); font-size:12px; }
+  .preview { white-space:pre-wrap; background:#f8fafc; border:1px solid var(--line); border-radius:6px; padding:10px; min-height:80px; }
+  .cmd { display:flex; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid var(--line); }
+  .cmd code { flex:1; font-family:Consolas, monospace; font-size:13px; background:#f1f5f9; padding:4px 6px; border-radius:4px; word-break:break-all; }
+  .cmd .lbl { width:210px; }
+  table { border-collapse:collapse; width:100%; font-size:13px; margin-bottom:14px; }
+  th, td { border:1px solid var(--line); padding:4px 6px; text-align:left; vertical-align:top; }
+  th { background:#f1f5f9; }
+  .ext-item { display:flex; justify-content:space-between; padding:5px 2px; border-bottom:1px solid var(--line); cursor:pointer; }
+  .ext-item:hover { background:#f1f5f9; }
+  .ext-item b { font-family:Consolas, monospace; }
+  #toast { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:var(--ok); color:#fff; padding:8px 14px; border-radius:6px; display:none; }
+  .hidden-key { color:var(--muted); cursor:pointer; text-decoration:underline dotted; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Helpdesk segéd</h1>
+  <nav>
+    <button data-tab="sablonok" class="active">Hibajegy-sablonok</button>
+    <button data-tab="eszkozok">PC-tulajdonos kereső</button>
+    <button data-tab="parancsok">Távoli gép parancsok</button>
+  </nav>
+</header>
+
+<div class="layout">
+<main>
+  <!-- 1. Hibajegy-sablonok -->
+  <section id="sablonok" class="active">
+    <h2>Hibajegy-sablonok</h2>
+    <div class="row">
+      <select id="tplSelect"></select>
+      <button class="btn light" id="tplEditBtn">Sablonok szerkesztése</button>
+    </div>
+    <div id="tplFields"></div>
+    <div class="preview" id="tplPreview"></div>
+    <div class="row" style="margin-top:8px">
+      <button class="btn" id="tplCopy">Másolás a vágólapra</button>
+    </div>
+    <div id="tplEditor" style="display:none; margin-top:14px">
+      <p class="muted">Formátum: minden sablon egy <b>### Sablon neve</b> sorral kezdődik. A kitöltendő mezőket így jelöld: <b>{{Mező neve}}</b>.</p>
+      <textarea id="tplText" style="min-height:300px"></textarea>
+      <div class="row" style="margin-top:8px"><button class="btn" id="tplSave">Mentés</button></div>
+    </div>
+  </section>
+
+  <!-- 2. PC-tulajdonos kereső -->
+  <section id="eszkozok">
+    <h2>PC-tulajdonos kereső</h2>
+    <div class="row">
+      <button class="btn" id="hwPick">Hardverlista betöltése</button>
+      <button class="btn light" id="hwReload" style="display:none">Legutóbbi fájl újratöltése</button>
+      <input type="file" id="hwFile" accept=".xlsb,.xlsx,.xls" style="display:none">
+      <span class="muted" id="hwStatus">Nincs betöltve. Válaszd ki: \\smbclust\db\Hardverlista2025_-_Ezt_használd.xlsb</span>
+    </div>
+    <div class="row">
+      <input id="hwSearch" placeholder="Keresés: név, IRO szám (pl. D2012), IP, MAC, login név, szoba...">
+    </div>
+    <div id="hwResults"></div>
+  </section>
+
+  <!-- 3. Távoli gép parancsok -->
+  <section id="parancsok">
+    <h2>Távoli gép parancsok</h2>
+    <div class="row">
+      <input id="pcName" placeholder="Gépnév vagy IP (pl. D231)">
+    </div>
+    <p class="muted">A gomb a kész parancsot a vágólapra teszi, ezt illeszd be az admin cmd-be.</p>
+    <div id="cmdList"></div>
+  </section>
+</main>
+
+<!-- 4. Mellékek panel (mindig látszik) -->
+<aside>
+  <h2>Mellékek</h2>
+  <input id="extSearch" placeholder="Keresés név vagy osztály szerint">
+  <div id="extList" style="margin-top:8px"></div>
+  <div class="row" style="margin-top:10px"><button class="btn light" id="extEditBtn">Lista szerkesztése</button></div>
+  <div id="extEditor" style="display:none">
+    <p class="muted">Soronként: <b>Név;Osztály;Mellék</b></p>
+    <textarea id="extText" style="min-height:220px"></textarea>
+    <div class="row" style="margin-top:6px"><button class="btn" id="extSave">Mentés</button></div>
+  </div>
+</aside>
+</div>
+<div id="toast"></div>
+
+<script src="lib/xlsx.full.min.js"></script>
+<script>
+// ---------- Közös segédek ----------
+const $ = id => document.getElementById(id);
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('hd.' + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('hd.' + k, JSON.stringify(v)); } catch {} }
+};
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => t.style.display = 'none', 1500); }
+async function copy(text) {
+  try { await navigator.clipboard.writeText(text); }
+  catch { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
+  toast('Vágólapra másolva');
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const norm = s => String(s ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => showTab(b.dataset.tab));
+function showTab(id) {
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('active', x.dataset.tab === id));
+  document.querySelectorAll('main section').forEach(s => s.classList.toggle('active', s.id === id));
+}
+
+// ---------- 1. Hibajegy-sablonok ----------
+const DEFAULT_TPL = `### Jelszó-visszaállítás
+Bejelentő: {{Név}}
+Probléma: A felhasználó nem tudott bejelentkezni, a jelszava lejárt / zárolva lett.
+Elvégzett lépések: Azonosítás után a jelszót visszaállítottam, a fiók zárolását feloldottam. Következő bejelentkezéskor új jelszót kell megadnia.
+Eredmény: A felhasználó sikeresen bejelentkezett.
+
+### Nyomtatóhiba
+Bejelentő: {{Név}}
+Nyomtató: {{Nyomtató}}
+Probléma: {{Hibajelenség}}
+Elvégzett lépések: Nyomtatási sor törlése, nyomtató újraindítása, illesztőprogram ellenőrzése.
+Eredmény: A nyomtatás helyreállt.
+
+### Hálózati hiba
+Bejelentő: {{Név}}
+Gép: {{Gépnév}}
+Probléma: A gépen nem volt hálózati kapcsolat / nem érhetők el a hálózati meghajtók.
+Elvégzett lépések: Kábel és csatlakozás ellenőrzése, ipconfig /release, /renew, DNS-gyorsítótár ürítése.
+Eredmény: A kapcsolat helyreállt.
+
+### Szoftvertelepítés
+Bejelentő: {{Név}}
+Gép: {{Gépnév}}
+Kért szoftver: {{Szoftver}}
+Elvégzett lépések: A szoftvert telepítettem, az indulását ellenőriztem.
+Eredmény: A szoftver használatra kész.`;
+
+function parseTemplates(text) {
+  return text.split(/^###\s*/m).map(s => s.trim()).filter(Boolean).map(block => {
+    const i = block.indexOf('\n');
+    return { name: (i < 0 ? block : block.slice(0, i)).trim(), body: i < 0 ? '' : block.slice(i + 1).trim() };
+  });
+}
+let tplText = store.get('templates', DEFAULT_TPL), templates = parseTemplates(tplText), tplValues = {};
+function renderTplSelect() {
+  $('tplSelect').innerHTML = templates.map((t, i) => `<option value="${i}">${esc(t.name)}</option>`).join('');
+  renderTplFields();
+}
+function renderTplFields() {
+  const t = templates[$('tplSelect').value]; if (!t) { $('tplFields').innerHTML = ''; $('tplPreview').textContent = ''; return; }
+  const fields = [...new Set([...t.body.matchAll(/\{\{(.+?)\}\}/g)].map(m => m[1]))];
+  $('tplFields').innerHTML = fields.map(f => `<div class="row"><label style="width:120px">${esc(f)}</label><input data-field="${esc(f)}" value="${esc(tplValues[f] || '')}"></div>`).join('');
+  $('tplFields').querySelectorAll('input').forEach(inp => inp.oninput = () => { tplValues[inp.dataset.field] = inp.value; renderTplPreview(); });
+  renderTplPreview();
+}
+function renderTplPreview() {
+  const t = templates[$('tplSelect').value]; if (!t) return;
+  $('tplPreview').textContent = t.body.replace(/\{\{(.+?)\}\}/g, (_, f) => tplValues[f] || `[${f}]`);
+}
+$('tplSelect').onchange = renderTplFields;
+$('tplCopy').onclick = () => copy($('tplPreview').textContent);
+$('tplEditBtn').onclick = () => { const e = $('tplEditor'); e.style.display = e.style.display === 'none' ? 'block' : 'none'; $('tplText').value = tplText; };
+$('tplSave').onclick = () => { tplText = $('tplText').value; store.set('templates', tplText); templates = parseTemplates(tplText); renderTplSelect(); $('tplEditor').style.display = 'none'; toast('Sablonok mentve'); };
+renderTplSelect();
+
+// ---------- 4. Mellékek ----------
+let extText = store.get('extensions', 'Minta Péter;IT;1234\nPélda Anna;HR;2345');
+const parseExt = t => t.split('\n').map(l => l.split(';').map(x => x.trim())).filter(p => p[0]).map(([name, dept = '', ext = '']) => ({ name, dept, ext }));
+function renderExt() {
+  const q = norm($('extSearch').value);
+  const list = parseExt(extText).filter(e => !q || norm(e.name + ' ' + e.dept + ' ' + e.ext).includes(q)).sort((a, b) => a.name.localeCompare(b.name, 'hu'));
+  $('extList').innerHTML = list.map(e => `<div class="ext-item" data-ext="${esc(e.ext)}" title="Kattints a másoláshoz"><span>${esc(e.name)}<br><span class="muted">${esc(e.dept)}</span></span><b>${esc(e.ext)}</b></div>`).join('') || '<p class="muted">Nincs találat.</p>';
+  $('extList').querySelectorAll('.ext-item').forEach(d => d.onclick = () => copy(d.dataset.ext));
+}
+$('extSearch').oninput = renderExt;
+$('extEditBtn').onclick = () => { const e = $('extEditor'); e.style.display = e.style.display === 'none' ? 'block' : 'none'; $('extText').value = extText; };
+$('extSave').onclick = () => { extText = $('extText').value; store.set('extensions', extText); renderExt(); $('extEditor').style.display = 'none'; toast('Mellékek mentve'); };
+renderExt();
+
+// ---------- 2. PC-tulajdonos kereső ----------
+// Csak ezeket a lapokat olvassuk be; a licensz-lapokat kihagyjuk.
+const HW_SHEETS = ['LDAP-IRO+IP címek', 'Számítógépek', 'FVK', 'Monitorok', 'Nyomtatók', 'Hálózat', 'Egyéb'];
+const SECRET_COL = /kulcs|licensz|license/i;
+let hwData = []; // [{sheet, headers, rows}]
+
+function loadWorkbook(buf, name) {
+  const wb = XLSX.read(buf, { type: 'array' });
+  hwData = [];
+  for (const sn of HW_SHEETS) {
+    const ws = wb.Sheets[sn]; if (!ws) continue;
+    const grid = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: false });
+    const hi = grid.findIndex(r => r.filter(c => String(c).trim()).length >= 3);
+    if (hi < 0) continue;
+    const headers = grid[hi].map(h => String(h).replace(/\s+/g, ' ').trim());
+    const keep = headers.map((h, i) => h ? i : -1).filter(i => i >= 0);
+    const rows = grid.slice(hi + 1).filter(r => r.some(c => String(c).trim())).map(r => keep.map(i => String(r[i] ?? '').trim()));
+    hwData.push({ sheet: sn, headers: keep.map(i => headers[i]), rows, idx: rows.map(r => norm(r.join(' '))) });
+  }
+  const n = hwData.reduce((s, d) => s + d.rows.length, 0);
+  $('hwStatus').textContent = `Betöltve: ${name} (${n} sor, ${new Date().toLocaleTimeString('hu')})`;
+  renderHw();
+}
+function renderHw() {
+  const q = norm($('hwSearch').value.trim());
+  if (!hwData.length) { $('hwResults').innerHTML = ''; return; }
+  if (q.length < 2) { $('hwResults').innerHTML = '<p class="muted">Írj be legalább 2 karaktert.</p>'; return; }
+  const terms = q.split(/\s+/);
+  let html = '';
+  for (const d of hwData) {
+    const hits = d.rows.filter((r, i) => terms.every(t => d.idx[i].includes(t))).slice(0, 30);
+    if (!hits.length) continue;
+    const pcCol = d.headers.findIndex(h => /^IRO/i.test(h) || /PC, VK/i.test(h));
+    html += `<h2>${esc(d.sheet)} <span class="muted">(${hits.length}${hits.length === 30 ? '+' : ''})</span></h2><div style="overflow-x:auto"><table><tr>${d.headers.map(h => `<th>${esc(h)}</th>`).join('')}<th></th></tr>`;
+    html += hits.map(r => `<tr>${r.map((c, i) => SECRET_COL.test(d.headers[i]) && c ? `<td><span class="hidden-key" data-v="${esc(c)}">rejtett</span></td>` : `<td>${esc(c)}</td>`).join('')}<td>${pcCol >= 0 && r[pcCol] ? `<button class="btn light" data-pc="${esc(r[pcCol])}">Parancsok</button>` : ''}</td></tr>`).join('');
+    html += '</table></div>';
+  }
+  $('hwResults').innerHTML = html || '<p class="muted">Nincs találat.</p>';
+  $('hwResults').querySelectorAll('.hidden-key').forEach(s => s.onclick = () => { s.textContent = s.dataset.v; s.classList.remove('hidden-key'); });
+  $('hwResults').querySelectorAll('[data-pc]').forEach(b => b.onclick = () => { $('pcName').value = b.dataset.pc; renderCmds(); showTab('parancsok'); });
+}
+$('hwSearch').oninput = renderHw;
+
+// Fájl kiválasztása: Edge/Chrome alatt a fájlt megjegyezzük (IndexedDB), máskor sima fájlválasztó.
+const idb = (mode, fn) => new Promise((res, rej) => {
+  const r = indexedDB.open('helpdesk', 1);
+  r.onupgradeneeded = () => r.result.createObjectStore('kv');
+  r.onsuccess = () => { const tx = r.result.transaction('kv', mode); const q = fn(tx.objectStore('kv')); tx.oncomplete = () => res(q && q.result); tx.onerror = () => rej(tx.error); };
+  r.onerror = () => rej(r.error);
+});
+async function readHandle(h) { const f = await h.getFile(); loadWorkbook(await f.arrayBuffer(), f.name); }
+$('hwPick').onclick = async () => {
+  if (window.showOpenFilePicker) {
+    try {
+      const [h] = await showOpenFilePicker({ types: [{ description: 'Excel', accept: { 'application/octet-stream': ['.xlsb', '.xlsx', '.xls'] } }] });
+      await readHandle(h);
+      try { await idb('readwrite', s => s.put(h, 'hwHandle')); } catch {}
+      return;
+    } catch (e) { if (e.name === 'AbortError') return; }
+  }
+  $('hwFile').click();
+};
+$('hwFile').onchange = async e => { const f = e.target.files[0]; if (f) loadWorkbook(await f.arrayBuffer(), f.name); };
+$('hwReload').onclick = async () => {
+  try {
+    const h = await idb('readonly', s => s.get('hwHandle'));
+    if (h && (await h.requestPermission({ mode: 'read' })) === 'granted') await readHandle(h);
+  } catch (e) { $('hwStatus').textContent = 'Az újratöltés nem sikerült, válaszd ki újra a fájlt.'; }
+};
+(async () => { try { if (window.showOpenFilePicker && await idb('readonly', s => s.get('hwHandle'))) $('hwReload').style.display = ''; } catch {} })();
+
+// ---------- 3. Távoli gép parancsok ----------
+const CMDS = [
+  ['C meghajtó megnyitása', 'explorer \\\\{PC}\\c$'],
+  ['Utoljára bejelentkezett user', 'reg query "\\\\{PC}\\HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Authentication\\LogonUI" /v LastLoggedOnUser'],
+  ['Most bejelentkezett user', 'wmic /node:{PC} computersystem get username'],
+  ['Ping (folyamatos)', 'ping -t {PC}'],
+  ['Csoportházirend frissítése', 'wmic /node:{PC} process call create "gpupdate /force"'],
+  ['Számítógép-kezelés megnyitása', 'compmgmt.msc /computer:{PC}'],
+  ['Távoli asztal', 'mstsc /v:{PC}'],
+  ['Újraindítás (60 mp múlva)', 'shutdown /r /m \\\\{PC} /t 60 /c "Karbantartás miatt a gép 1 perc múlva újraindul."'],
+  ['Újraindítás visszavonása', 'shutdown /a /m \\\\{PC}'],
+];
+function renderCmds() {
+  const pc = $('pcName').value.trim() || 'GÉPNÉV';
+  $('cmdList').innerHTML = CMDS.map(([l, c], i) => `<div class="cmd"><span class="lbl">${esc(l)}</span><code>${esc(c.replaceAll('{PC}', pc))}</code><button class="btn" data-i="${i}">Másol</button></div>`).join('');
+  $('cmdList').querySelectorAll('button').forEach(b => b.onclick = () => copy(CMDS[b.dataset.i][1].replaceAll('{PC}', pc)));
+}
+$('pcName').oninput = renderCmds;
+renderCmds();
+</script>
+</body>
+</html>

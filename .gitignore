@@ -1,0 +1,5 @@
+# Bizalmas céges adatok soha ne kerüljenek a repóba
+*.xlsb
+*.xlsx
+*.xls
+*.csv
