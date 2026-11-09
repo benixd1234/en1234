@@ -326,7 +326,7 @@ $('hwReload').onclick = async () => {
 // [címke, parancs, hol fut]: 'both' = PowerShell és cmd, 'ps' = csak PowerShell
 const CIM = "New-CimSession -ComputerName {PC} -SessionOption (New-CimSessionOption -Protocol Dcom)";
 const CMDS = [
-  ['C meghajtó megnyitása', "explorer '\\\\{PC}\\c$'", 'ps'],
+  ['C meghajtó megnyitása', 'start \\\\{PC}\\C$\\', 'both'],
   ['Utoljára bejelentkezett user', 'reg query "\\\\{PC}\\HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Authentication\\LogonUI" /v LastLoggedOnUser', 'both'],
   ['Most bejelentkezett user', 'query user /server:{PC}', 'both'],
   ['Most bejelentkezett user (WMI)', "(Get-CimInstance -CimSession (" + CIM + ") Win32_ComputerSystem).UserName", 'ps'],
