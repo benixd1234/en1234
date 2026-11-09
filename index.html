@@ -44,6 +44,9 @@
   .ext-item:hover { background:var(--green-soft); }
   .ext-item b { font-family:Consolas, monospace; color:#2d8f6b; font-size:15px; }
   #toast { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:var(--green); color:#fff; padding:8px 16px; border-radius:999px; display:none; box-shadow:0 2px 8px rgba(0,0,0,.15); }
+  .tag { display:inline-block; font-size:11px; font-weight:400; padding:1px 7px; border-radius:999px; margin-top:2px; }
+  .tag.ps { background:var(--blue-soft); color:#2f7dbf; }
+  .tag.both { background:var(--green-soft); color:#2d8f6b; }
   .hidden-key { color:var(--muted); cursor:pointer; text-decoration:underline dotted; }
   @media (max-width: 900px) {
     .layout { grid-template-columns:1fr; height:auto; }
@@ -113,7 +116,7 @@
     <div class="row">
       <input id="pcName" placeholder="Gépnév vagy IP (pl. D231)">
     </div>
-    <p class="muted">A gomb a kész parancsot a vágólapra teszi, ezt illeszd be az admin cmd-be.</p>
+    <p class="muted">A gomb a kész parancsot a vágólapra teszi, ezt illeszd be egy rendszergazdaként futtatott PowerShell ablakba. A „PowerShell / cmd” jelölésűek a régi cmd-ben is működnek.</p>
     <div id="cmdList"></div>
   </section>
 </main>
@@ -298,20 +301,23 @@ $('hwReload').onclick = async () => {
 (async () => { try { if (window.showOpenFilePicker && await idb('readonly', s => s.get('hwHandle'))) $('hwReload').style.display = ''; } catch {} })();
 
 // ---------- 3. Távoli gép parancsok ----------
+// [címke, parancs, hol fut]: 'both' = PowerShell és cmd, 'ps' = csak PowerShell
+const CIM = "New-CimSession -ComputerName {PC} -SessionOption (New-CimSessionOption -Protocol Dcom)";
 const CMDS = [
-  ['C meghajtó megnyitása', 'explorer \\\\{PC}\\c$'],
-  ['Utoljára bejelentkezett user', 'reg query "\\\\{PC}\\HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Authentication\\LogonUI" /v LastLoggedOnUser'],
-  ['Most bejelentkezett user', 'wmic /node:{PC} computersystem get username'],
-  ['Ping (folyamatos)', 'ping -t {PC}'],
-  ['Csoportházirend frissítése', 'wmic /node:{PC} process call create "gpupdate /force"'],
-  ['Számítógép-kezelés megnyitása', 'compmgmt.msc /computer:{PC}'],
-  ['Távoli asztal', 'mstsc /v:{PC}'],
-  ['Újraindítás (60 mp múlva)', 'shutdown /r /m \\\\{PC} /t 60 /c "Karbantartás miatt a gép 1 perc múlva újraindul."'],
-  ['Újraindítás visszavonása', 'shutdown /a /m \\\\{PC}'],
+  ['C meghajtó megnyitása', "explorer '\\\\{PC}\\c$'", 'ps'],
+  ['Utoljára bejelentkezett user', 'reg query "\\\\{PC}\\HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Authentication\\LogonUI" /v LastLoggedOnUser', 'both'],
+  ['Most bejelentkezett user', 'query user /server:{PC}', 'both'],
+  ['Most bejelentkezett user (WMI)', "(Get-CimInstance -CimSession (" + CIM + ") Win32_ComputerSystem).UserName", 'ps'],
+  ['Ping (folyamatos)', 'ping -t {PC}', 'both'],
+  ['Csoportházirend frissítése', "Invoke-CimMethod -CimSession (" + CIM + ") -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine='gpupdate /force'}", 'ps'],
+  ['Számítógép-kezelés megnyitása', 'compmgmt.msc /computer:{PC}', 'both'],
+  ['Távoli asztal', 'mstsc /v:{PC}', 'both'],
+  ['Újraindítás (60 mp múlva)', 'shutdown /r /m \\\\{PC} /t 60 /c "Karbantartás miatt a gép 1 perc múlva újraindul."', 'both'],
+  ['Újraindítás visszavonása', 'shutdown /a /m \\\\{PC}', 'both'],
 ];
 function renderCmds() {
   const pc = $('pcName').value.trim() || 'GÉPNÉV';
-  $('cmdList').innerHTML = CMDS.map(([l, c], i) => `<div class="cmd"><span class="lbl">${esc(l)}</span><code>${esc(c.replaceAll('{PC}', pc))}</code><button class="btn green" data-i="${i}">Másol</button></div>`).join('');
+  $('cmdList').innerHTML = CMDS.map(([l, c, w], i) => `<div class="cmd"><span class="lbl">${esc(l)}<br><span class="tag ${w}">${w === 'ps' ? 'csak PowerShell' : 'PowerShell / cmd'}</span></span><code>${esc(c.replaceAll('{PC}', pc))}</code><button class="btn green" data-i="${i}">Másol</button></div>`).join('');
   $('cmdList').querySelectorAll('button').forEach(b => b.onclick = () => copy(CMDS[b.dataset.i][1].replaceAll('{PC}', pc)));
 }
 $('pcName').oninput = renderCmds;
