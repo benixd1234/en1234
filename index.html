@@ -5,36 +5,60 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Helpdesk segéd</title>
 <style>
-  :root { --bg:#f4f5f7; --panel:#fff; --text:#1d2330; --muted:#6b7280; --line:#dde1e7; --accent:#2563eb; --ok:#16a34a; }
+  :root { --bg:#eef6fb; --panel:#fff; --text:#1f3a4d; --muted:#5f7a8c; --line:#d3e6ef; --blue:#3b8fd9; --blue-soft:#e3f1fb; --green:#3fb68b; --green-soft:#e4f6ee; }
   * { box-sizing:border-box; }
-  body { margin:0; font:14px/1.45 "Segoe UI", system-ui, sans-serif; background:var(--bg); color:var(--text); }
-  header { display:flex; align-items:center; gap:16px; padding:10px 16px; background:#1e293b; color:#fff; }
-  header h1 { font-size:16px; margin:0; }
-  nav button { background:none; border:0; color:#cbd5e1; padding:6px 10px; border-radius:6px; cursor:pointer; font:inherit; }
-  nav button.active, nav button:hover { background:#334155; color:#fff; }
-  .layout { display:grid; grid-template-columns:1fr 300px; gap:12px; padding:12px; height:calc(100vh - 48px); }
-  main, aside { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:14px; overflow:auto; }
+  body { margin:0; font:14px/1.45 "Segoe UI", system-ui, sans-serif; background:linear-gradient(160deg, #eaf4fc 0%, #edf8f2 100%); background-attachment:fixed; color:var(--text); min-height:100vh; }
+  header { display:flex; align-items:center; flex-wrap:wrap; gap:8px 16px; padding:10px 16px; background:linear-gradient(90deg, #4a9de0, #47bf94); color:#fff; box-shadow:0 2px 6px rgba(31,58,77,.12); }
+  header h1 { font-size:17px; margin:0; letter-spacing:.2px; }
+  nav { display:flex; flex-wrap:wrap; gap:4px; }
+  nav button { background:rgba(255,255,255,.15); border:0; color:#fff; padding:6px 12px; border-radius:999px; cursor:pointer; font:inherit; }
+  nav button:hover { background:rgba(255,255,255,.28); }
+  nav button.active { background:#fff; color:#2f7dbf; font-weight:600; }
+  .layout { display:grid; grid-template-columns:1fr 300px; gap:14px; padding:14px; height:calc(100vh - 52px); }
+  main, aside { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; overflow:auto; box-shadow:0 1px 3px rgba(31,58,77,.06); }
+  aside { border-top:4px solid var(--green); }
+  main { border-top:4px solid var(--blue); }
   section { display:none; } section.active { display:block; }
-  h2 { font-size:15px; margin:0 0 10px; }
-  input, select, textarea { font:inherit; padding:6px 8px; border:1px solid var(--line); border-radius:6px; width:100%; }
+  h2 { font-size:15px; margin:0 0 10px; color:#2f6f9f; }
+  aside h2 { color:#2d8f6b; }
+  input, select, textarea { font:inherit; padding:7px 9px; border:1px solid var(--line); border-radius:8px; width:100%; background:#fbfdfe; color:var(--text); }
+  input:focus, select:focus, textarea:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px var(--blue-soft); }
   textarea { min-height:120px; font-family:Consolas, monospace; }
-  button.btn { font:inherit; padding:6px 12px; border:1px solid var(--accent); background:var(--accent); color:#fff; border-radius:6px; cursor:pointer; }
-  button.btn.light { background:#fff; color:var(--accent); }
+  button.btn { font:inherit; padding:7px 14px; border:1px solid var(--blue); background:var(--blue); color:#fff; border-radius:8px; cursor:pointer; }
+  button.btn:hover { filter:brightness(1.07); }
+  button.btn.light { background:var(--blue-soft); color:#2f7dbf; border-color:#bcdcf3; }
+  button.btn.green { background:var(--green); border-color:var(--green); }
   .row { display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap; }
   .row > input, .row > select { flex:1; min-width:160px; }
+  .row > label { width:120px; }
   .muted { color:var(--muted); font-size:12px; }
-  .preview { white-space:pre-wrap; background:#f8fafc; border:1px solid var(--line); border-radius:6px; padding:10px; min-height:80px; }
-  .cmd { display:flex; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid var(--line); }
-  .cmd code { flex:1; font-family:Consolas, monospace; font-size:13px; background:#f1f5f9; padding:4px 6px; border-radius:4px; word-break:break-all; }
+  .preview { white-space:pre-wrap; background:var(--green-soft); border:1px solid #c6eadb; border-radius:8px; padding:12px; min-height:80px; }
+  .cmd { display:flex; gap:8px; align-items:center; padding:7px 0; border-bottom:1px solid var(--line); }
+  .cmd code { flex:1; font-family:Consolas, monospace; font-size:13px; background:var(--blue-soft); padding:5px 7px; border-radius:6px; word-break:break-all; }
   .cmd .lbl { width:210px; }
   table { border-collapse:collapse; width:100%; font-size:13px; margin-bottom:14px; }
-  th, td { border:1px solid var(--line); padding:4px 6px; text-align:left; vertical-align:top; }
-  th { background:#f1f5f9; }
-  .ext-item { display:flex; justify-content:space-between; padding:5px 2px; border-bottom:1px solid var(--line); cursor:pointer; }
-  .ext-item:hover { background:#f1f5f9; }
-  .ext-item b { font-family:Consolas, monospace; }
-  #toast { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:var(--ok); color:#fff; padding:8px 14px; border-radius:6px; display:none; }
+  th, td { border:1px solid var(--line); padding:5px 7px; text-align:left; vertical-align:top; }
+  th { background:var(--blue-soft); color:#2f6f9f; }
+  tr:nth-child(odd) td { background:#fafdff; }
+  .ext-item { display:flex; justify-content:space-between; padding:6px 6px; border-bottom:1px solid var(--line); cursor:pointer; border-radius:6px; }
+  .ext-item:hover { background:var(--green-soft); }
+  .ext-item b { font-family:Consolas, monospace; color:#2d8f6b; font-size:15px; }
+  #toast { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:var(--green); color:#fff; padding:8px 16px; border-radius:999px; display:none; box-shadow:0 2px 8px rgba(0,0,0,.15); }
   .hidden-key { color:var(--muted); cursor:pointer; text-decoration:underline dotted; }
+  @media (max-width: 900px) {
+    .layout { grid-template-columns:1fr; height:auto; }
+    main, aside { overflow:visible; }
+    aside { order:-1; max-height:260px; overflow:auto; }
+  }
+  @media (max-width: 600px) {
+    .layout { padding:8px; gap:10px; }
+    header h1 { width:100%; }
+    nav button { padding:5px 10px; font-size:13px; }
+    .cmd { flex-wrap:wrap; }
+    .cmd .lbl { width:100%; font-weight:600; }
+    .row > label { width:100%; }
+    .row > input, .row > select { min-width:0; }
+  }
 </style>
 </head>
 <body>
@@ -59,7 +83,7 @@
     <div id="tplFields"></div>
     <div class="preview" id="tplPreview"></div>
     <div class="row" style="margin-top:8px">
-      <button class="btn" id="tplCopy">Másolás a vágólapra</button>
+      <button class="btn green" id="tplCopy">Másolás a vágólapra</button>
     </div>
     <div id="tplEditor" style="display:none; margin-top:14px">
       <p class="muted">Formátum: minden sablon egy <b>### Sablon neve</b> sorral kezdődik. A kitöltendő mezőket így jelöld: <b>{{Mező neve}}</b>.</p>
@@ -174,7 +198,7 @@ function renderTplSelect() {
 function renderTplFields() {
   const t = templates[$('tplSelect').value]; if (!t) { $('tplFields').innerHTML = ''; $('tplPreview').textContent = ''; return; }
   const fields = [...new Set([...t.body.matchAll(/\{\{(.+?)\}\}/g)].map(m => m[1]))];
-  $('tplFields').innerHTML = fields.map(f => `<div class="row"><label style="width:120px">${esc(f)}</label><input data-field="${esc(f)}" value="${esc(tplValues[f] || '')}"></div>`).join('');
+  $('tplFields').innerHTML = fields.map(f => `<div class="row"><label>${esc(f)}</label><input data-field="${esc(f)}" value="${esc(tplValues[f] || '')}"></div>`).join('');
   $('tplFields').querySelectorAll('input').forEach(inp => inp.oninput = () => { tplValues[inp.dataset.field] = inp.value; renderTplPreview(); });
   renderTplPreview();
 }
@@ -287,7 +311,7 @@ const CMDS = [
 ];
 function renderCmds() {
   const pc = $('pcName').value.trim() || 'GÉPNÉV';
-  $('cmdList').innerHTML = CMDS.map(([l, c], i) => `<div class="cmd"><span class="lbl">${esc(l)}</span><code>${esc(c.replaceAll('{PC}', pc))}</code><button class="btn" data-i="${i}">Másol</button></div>`).join('');
+  $('cmdList').innerHTML = CMDS.map(([l, c], i) => `<div class="cmd"><span class="lbl">${esc(l)}</span><code>${esc(c.replaceAll('{PC}', pc))}</code><button class="btn green" data-i="${i}">Másol</button></div>`).join('');
   $('cmdList').querySelectorAll('button').forEach(b => b.onclick = () => copy(CMDS[b.dataset.i][1].replaceAll('{PC}', pc)));
 }
 $('pcName').oninput = renderCmds;
