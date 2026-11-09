@@ -67,6 +67,14 @@
   table.compact td { padding:4px 14px 4px 6px; }
   table.compact a { color:var(--blue-text); text-decoration:none; }
   table.compact tr.miss td { color:#d9822b; }
+  #hwResults td { cursor:copy; }
+  #hwResults td:hover { background:var(--blue-soft); color:var(--blue-text); }
+  #hwResults th { cursor:copy; }
+  #hwResults th:hover { color:var(--blue-text); }
+  td.iro { color:var(--blue-text); white-space:nowrap; }
+  button.go { border:0; background:none; color:var(--muted); cursor:pointer; padding:0 0 0 6px; opacity:0; transition:opacity .2s ease, color .2s ease; }
+  button.go i.ic { margin:0; width:14px; height:14px; }
+  tr:hover button.go { opacity:1; } button.go:hover { color:var(--green); }
   .summary { margin:4px 0 12px; }
   .warn { color:#d9822b; font-weight:600; }
   i.ic { display:inline-flex; width:16px; height:16px; margin-right:7px; vertical-align:-3px; flex:none; }
@@ -307,10 +315,10 @@ function renderHw() {
   if (raw.length < 2) { $('hwResults').innerHTML = '<p class="muted">Írj be legalább 2 karaktert.</p>'; return; }
   const tokens = [...new Set(raw.split(/[\s,;]+/).filter(Boolean).map(t => t.toUpperCase()))];
   let html = '';
-  const listHtml = summary => `<p class="summary">${summary}</p>
+  const listHtml = summary => `<p class="summary">${summary} <span class="muted">Kattints egy cellára a másoláshoz, vagy egy oszlopcímre az egész oszlophoz.</span></p>
       <div class="row"><button class="btn green" id="listCopy"><i data-icon="copy"></i>Másolás</button><button class="btn light" id="listXlsx"><i data-icon="download"></i>Excel export</button></div>
       <table class="compact"><tr><th>IRO szám</th><th>Név</th><th>IP cím</th></tr>` +
-      hwList.map(r => `<tr${r.found ? '' : ' class="miss"'}><td>${r.iro ? `<a href="#" data-pc="${esc(r.iro)}" title="Parancsok ehhez a géphez">${esc(r.iro)}</a>` : ''}</td><td>${esc(r.found ? r.name : r.name || 'nincs a listában')}</td><td>${esc(r.ip)}</td></tr>`).join('') + '</table>';
+      hwList.map(r => `<tr${r.found ? '' : ' class="miss"'}><td class="iro">${r.iro ? `${esc(r.iro)}<button class="go" data-pc="${esc(r.iro)}" title="Parancsok ehhez a géphez"><i data-icon="terminal"></i></button>` : ''}</td><td>${esc(r.found ? r.name : r.name || 'nincs a listában')}</td><td>${esc(r.ip)}</td></tr>`).join('') + '</table>';
   const names = tokens.every(t => PC_RE.test(t)) ? null : raw.split(/[,;\n]+/).map(x => x.trim()).filter(x => x.length >= 2);
   const people = names ? names.map(n => ({ n, hits: findByName(n) })) : null;
   if (!names) {
@@ -346,6 +354,17 @@ function renderHw() {
   $('hwResults').querySelectorAll('[data-pc]').forEach(b => b.onclick = ev => { ev.preventDefault(); $('pcName').value = b.dataset.pc; renderCmds(); showTab('parancsok'); });
 }
 $('hwSearch').oninput = renderHw;
+// Bármelyik cellára kattintva másol; fejlécre kattintva az egész oszlopot másolja
+$('hwResults').addEventListener('click', ev => {
+  if (ev.target.closest('button, .hidden-key')) return;
+  const td = ev.target.closest('td'), th = ev.target.closest('th');
+  if (td) { const t = td.textContent.trim(); if (t) copy(t); }
+  else if (th && th.textContent.trim()) {
+    const table = th.closest('table'), i = th.cellIndex;
+    const vals = [...table.rows].slice(1).map(r => r.cells[i] ? r.cells[i].textContent.trim() : '').filter(Boolean);
+    if (vals.length) copy(vals.join('\n'));
+  }
+});
 
 // Fájl kiválasztása: Edge/Chrome alatt a fájlt megjegyezzük (IndexedDB), máskor sima fájlválasztó.
 const idb = (mode, fn) => new Promise((res, rej) => {
@@ -394,6 +413,7 @@ function renderCmds() {
   const pc = $('pcName').value.trim() || 'GÉPNÉV';
   $('cmdList').innerHTML = CMDS.map(([l, c, w], i) => `<div class="cmd"><span class="lbl">${esc(l)}<br><span class="tag ${w}">${w === 'ps' ? 'csak PowerShell' : 'PowerShell / cmd'}</span></span><code>${esc(c.replaceAll('{PC}', pc))}</code><button class="btn green" data-i="${i}"><i data-icon="copy"></i>Másol</button></div>`).join('');
   $('cmdList').querySelectorAll('button').forEach(b => b.onclick = () => copy(CMDS[b.dataset.i][1].replaceAll('{PC}', pc)));
+  $('cmdList').querySelectorAll('code').forEach(c => { c.style.cursor = 'copy'; c.onclick = () => copy(c.textContent); });
 }
 $('pcName').oninput = renderCmds;
 renderCmds();
