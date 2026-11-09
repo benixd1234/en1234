@@ -1,62 +1,75 @@
 <!DOCTYPE html>
 <html lang="hu">
 <head>
+<script>try{var t=localStorage.getItem('hd.theme');t=t?JSON.parse(t):(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.theme=t;}catch(e){}</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Helpdesk segéd</title>
 <style>
-  :root { --bg:#eef6fb; --panel:#fff; --text:#1f3a4d; --muted:#5f7a8c; --line:#d3e6ef; --blue:#3b8fd9; --blue-soft:#e3f1fb; --green:#3fb68b; --green-soft:#e4f6ee; }
+  :root {
+    --bg:#f5f8fa; --panel:#ffffff; --text:#1e2b33; --muted:#6b7f8c; --line:#e3eaef; --soft:#f0f5f8;
+    --blue:#3d8fd6; --blue-soft:#e6f1fa; --blue-text:#2b74b5;
+    --green:#36a87f; --green-soft:#e5f5ee; --green-text:#2a8763;
+  }
+  :root[data-theme="dark"] {
+    --bg:#12181d; --panel:#1a2228; --text:#dde6ec; --muted:#8a9ba6; --line:#2a353d; --soft:#212b32;
+    --blue:#5aa5e6; --blue-soft:#1d3142; --blue-text:#8cc2f0;
+    --green:#4cc196; --green-soft:#1b3329; --green-text:#7fd9b5;
+  }
   * { box-sizing:border-box; }
-  body { margin:0; font:14px/1.45 "Segoe UI", system-ui, sans-serif; background:linear-gradient(160deg, #eaf4fc 0%, #edf8f2 100%); background-attachment:fixed; color:var(--text); min-height:100vh; }
-  header { display:flex; align-items:center; flex-wrap:wrap; gap:8px 16px; padding:10px 16px; background:linear-gradient(90deg, #4a9de0, #47bf94); color:#fff; box-shadow:0 2px 6px rgba(31,58,77,.12); }
-  header h1 { font-size:17px; margin:0; letter-spacing:.2px; }
-  nav { display:flex; flex-wrap:wrap; gap:4px; }
-  nav button { background:rgba(255,255,255,.15); border:0; color:#fff; padding:6px 12px; border-radius:999px; cursor:pointer; font:inherit; }
-  nav button:hover { background:rgba(255,255,255,.28); }
-  nav button.active { background:#fff; color:#2f7dbf; font-weight:600; }
-  .layout { display:grid; grid-template-columns:1fr 300px; gap:14px; padding:14px; height:calc(100vh - 52px); }
-  main, aside { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; overflow:auto; box-shadow:0 1px 3px rgba(31,58,77,.06); }
-  aside { border-top:4px solid var(--green); }
-  main { border-top:4px solid var(--blue); }
+  body { margin:0; font:14px/1.5 "Segoe UI", system-ui, sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+  header { display:flex; align-items:center; flex-wrap:wrap; gap:8px 20px; padding:0 20px; min-height:52px; background:var(--panel); border-bottom:1px solid var(--line); }
+  header h1 { font-size:16px; font-weight:600; margin:0; display:flex; align-items:center; gap:8px; }
+  header h1::before { content:""; width:10px; height:10px; border-radius:2px; background:var(--green); box-shadow:6px 0 0 var(--blue); margin-right:8px; }
+  nav { display:flex; flex-wrap:wrap; gap:2px; flex:1; }
+  nav button { background:none; border:0; border-bottom:2px solid transparent; color:var(--muted); padding:15px 12px 13px; cursor:pointer; font:inherit; }
+  nav button:hover { color:var(--text); }
+  nav button.active { color:var(--blue-text); border-bottom-color:var(--blue); font-weight:600; }
+  #themeBtn { background:none; border:1px solid var(--line); color:var(--text); border-radius:6px; padding:5px 10px; cursor:pointer; font:inherit; }
+  #themeBtn:hover { background:var(--soft); }
+  .layout { display:grid; grid-template-columns:1fr 290px; gap:16px; padding:16px 20px; height:calc(100vh - 53px); }
+  main, aside { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px; overflow:auto; min-width:0; }
   section { display:none; } section.active { display:block; }
-  h2 { font-size:15px; margin:0 0 10px; color:#2f6f9f; }
-  aside h2 { color:#2d8f6b; }
-  input, select, textarea { font:inherit; padding:7px 9px; border:1px solid var(--line); border-radius:8px; width:100%; background:#fbfdfe; color:var(--text); }
-  input:focus, select:focus, textarea:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px var(--blue-soft); }
+  h2 { font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:.6px; margin:0 0 14px; color:var(--muted); }
+  input, select, textarea { font:inherit; padding:8px 10px; border:1px solid var(--line); border-radius:6px; width:100%; background:var(--soft); color:var(--text); }
+  input:focus, select:focus, textarea:focus { outline:none; border-color:var(--blue); background:var(--panel); }
+  input::placeholder { color:var(--muted); }
   textarea { min-height:120px; font-family:Consolas, monospace; }
-  button.btn { font:inherit; padding:7px 14px; border:1px solid var(--blue); background:var(--blue); color:#fff; border-radius:8px; cursor:pointer; }
-  button.btn:hover { filter:brightness(1.07); }
-  button.btn.light { background:var(--blue-soft); color:#2f7dbf; border-color:#bcdcf3; }
-  button.btn.green { background:var(--green); border-color:var(--green); }
-  .row { display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap; }
+  button.btn { font:inherit; padding:7px 14px; border:0; background:var(--blue); color:#fff; border-radius:6px; cursor:pointer; }
+  button.btn:hover { opacity:.88; }
+  button.btn.light { background:var(--blue-soft); color:var(--blue-text); }
+  button.btn.green { background:var(--green); }
+  .row { display:flex; gap:8px; align-items:center; margin-bottom:10px; flex-wrap:wrap; }
   .row > input, .row > select { flex:1; min-width:160px; }
-  .row > label { width:120px; }
+  .row > label { width:120px; color:var(--muted); }
   .muted { color:var(--muted); font-size:12px; }
-  .preview { white-space:pre-wrap; background:var(--green-soft); border:1px solid #c6eadb; border-radius:8px; padding:12px; min-height:80px; }
-  .cmd { display:flex; gap:8px; align-items:center; padding:7px 0; border-bottom:1px solid var(--line); }
-  .cmd code { flex:1; font-family:Consolas, monospace; font-size:13px; background:var(--blue-soft); padding:5px 7px; border-radius:6px; word-break:break-all; }
+  .preview { white-space:pre-wrap; background:var(--soft); border-left:3px solid var(--green); border-radius:0 6px 6px 0; padding:12px 14px; min-height:80px; }
+  .cmd { display:flex; gap:10px; align-items:center; padding:10px 0; border-bottom:1px solid var(--line); }
+  .cmd:last-child { border-bottom:0; }
+  .cmd code { flex:1; font-family:Consolas, monospace; font-size:13px; background:var(--soft); padding:6px 8px; border-radius:4px; word-break:break-all; }
   .cmd .lbl { width:210px; }
-  table { border-collapse:collapse; width:100%; font-size:13px; margin-bottom:14px; }
-  th, td { border:1px solid var(--line); padding:5px 7px; text-align:left; vertical-align:top; }
-  th { background:var(--blue-soft); color:#2f6f9f; }
-  tr:nth-child(odd) td { background:#fafdff; }
-  .ext-item { display:flex; justify-content:space-between; padding:6px 6px; border-bottom:1px solid var(--line); cursor:pointer; border-radius:6px; }
+  table { border-collapse:collapse; width:100%; font-size:13px; margin-bottom:18px; }
+  th, td { border-bottom:1px solid var(--line); padding:7px 8px; text-align:left; vertical-align:top; }
+  th { color:var(--muted); font-weight:600; font-size:12px; white-space:nowrap; }
+  tr:hover td { background:var(--soft); }
+  .ext-item { display:flex; justify-content:space-between; align-items:center; padding:8px 6px; border-bottom:1px solid var(--line); cursor:pointer; }
   .ext-item:hover { background:var(--green-soft); }
-  .ext-item b { font-family:Consolas, monospace; color:#2d8f6b; font-size:15px; }
-  #toast { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:var(--green); color:#fff; padding:8px 16px; border-radius:999px; display:none; box-shadow:0 2px 8px rgba(0,0,0,.15); }
-  .tag { display:inline-block; font-size:11px; font-weight:400; padding:1px 7px; border-radius:999px; margin-top:2px; }
-  .tag.ps { background:var(--blue-soft); color:#2f7dbf; }
-  .tag.both { background:var(--green-soft); color:#2d8f6b; }
+  .ext-item b { font-family:Consolas, monospace; color:var(--green-text); font-size:15px; font-weight:600; }
+  #toast { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:var(--green); color:#fff; padding:8px 16px; border-radius:6px; display:none; }
+  .tag { display:inline-block; font-size:11px; font-weight:400; padding:1px 7px; border-radius:4px; margin-top:3px; }
+  .tag.ps { background:var(--blue-soft); color:var(--blue-text); }
+  .tag.both { background:var(--green-soft); color:var(--green-text); }
   .hidden-key { color:var(--muted); cursor:pointer; text-decoration:underline dotted; }
   @media (max-width: 900px) {
-    .layout { grid-template-columns:1fr; height:auto; }
+    .layout { grid-template-columns:1fr; height:auto; padding:12px; }
     main, aside { overflow:visible; }
     aside { order:-1; max-height:260px; overflow:auto; }
   }
   @media (max-width: 600px) {
-    .layout { padding:8px; gap:10px; }
-    header h1 { width:100%; }
-    nav button { padding:5px 10px; font-size:13px; }
+    header { padding:8px 12px 0; }
+    header h1 { flex:1; }
+    nav { order:3; width:100%; flex:none; }
+    nav button { padding:10px 8px; font-size:13px; }
     .cmd { flex-wrap:wrap; }
     .cmd .lbl { width:100%; font-weight:600; }
     .row > label { width:100%; }
@@ -72,6 +85,7 @@
     <button data-tab="eszkozok">PC-tulajdonos kereső</button>
     <button data-tab="parancsok">Távoli gép parancsok</button>
   </nav>
+  <button id="themeBtn" title="Világos / sötét mód">Sötét mód</button>
 </header>
 
 <div class="layout">
@@ -158,6 +172,11 @@ function showTab(id) {
   document.querySelectorAll('nav button').forEach(x => x.classList.toggle('active', x.dataset.tab === id));
   document.querySelectorAll('main section').forEach(s => s.classList.toggle('active', s.id === id));
 }
+
+// ---------- Téma ----------
+function setTheme(t) { document.documentElement.dataset.theme = t; $('themeBtn').textContent = t === 'dark' ? 'Világos mód' : 'Sötét mód'; }
+setTheme(document.documentElement.dataset.theme || 'light');
+$('themeBtn').onclick = () => { const t = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; setTheme(t); store.set('theme', t); };
 
 // ---------- 1. Hibajegy-sablonok ----------
 const DEFAULT_TPL = `### Jelszó-visszaállítás
