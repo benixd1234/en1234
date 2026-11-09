@@ -60,8 +60,12 @@
   .tag.ps { background:var(--blue-soft); color:var(--blue-text); }
   .tag.both { background:var(--green-soft); color:var(--green-text); }
   h3.sheet { font-size:12px; font-weight:600; color:var(--muted); margin:10px 0 6px; }
-  .pc-card { border:1px solid var(--line); border-left:3px solid var(--blue); border-radius:6px; padding:12px 14px 2px; margin-bottom:14px; }
+  .unused-pc-card { border:1px solid var(--line); border-left:3px solid var(--blue); border-radius:6px; padding:12px 14px 2px; margin-bottom:14px; }
   .pc-card h2 { font-size:16px; text-transform:none; letter-spacing:0; color:var(--blue-text); margin:0 0 4px; }
+  table.compact { width:auto; min-width:360px; font-family:Consolas, monospace; }
+  table.compact td { padding:4px 14px 4px 6px; }
+  table.compact a { color:var(--blue-text); text-decoration:none; }
+  table.compact tr.miss td { color:#d9822b; }
   .summary { margin:4px 0 12px; }
   .warn { color:#d9822b; font-weight:600; }
   .hidden-key { color:var(--muted); cursor:pointer; text-decoration:underline dotted; }
@@ -211,6 +215,24 @@ function hwTable(d, rows, title) {
   return `<h3 class="sheet">${esc(title)}</h3><div style="overflow-x:auto"><table><tr>${d.headers.map(h => `<th>${esc(h)}</th>`).join('')}<th></th></tr>` +
     rows.map(r => `<tr>${r.map((c, i) => cell(d, c, i)).join('')}<td>${pcCol >= 0 && PC_RE.test(r[pcCol]) ? `<button class="btn light" data-pc="${esc(r[pcCol])}">Parancsok</button>` : ''}</td></tr>`).join('') + '</table></div>';
 }
+let hwList = [];
+const colOf = (d, re) => d.headers.findIndex(h => re.test(h));
+// Egy gép (IRO szám vagy IP) összefoglalója: elsősorban az LDAP-lapból, utána a gép-lapokból
+function pcSummary(t) {
+  const key = norm(t), out = { iro: t, name: '', ip: '', found: false };
+  const order = ['LDAP-IRO+IP címek', 'Számítógépek', 'FVK'];
+  for (const sn of order) {
+    const d = hwData.find(x => x.sheet === sn); if (!d) continue;
+    const ci = colOf(d, /^IRO/i), cn = colOf(d, /Felhasználói név|^Felhasználó$/i), cp = colOf(d, /IP cím/i);
+    const r = d.rows.find(r => (ci >= 0 && norm(r[ci]) === key) || (cp >= 0 && norm(r[cp]) === key));
+    if (!r) continue;
+    out.found = true;
+    if (ci >= 0 && r[ci]) out.iro = r[ci].toUpperCase();
+    if (!out.name && cn >= 0) out.name = r[cn];
+    if (!out.ip && cp >= 0) out.ip = r[cp];
+  }
+  return out;
+}
 function renderHw() {
   const raw = $('hwSearch').value.trim();
   if (!hwData.length) { $('hwResults').innerHTML = ''; return; }
@@ -218,19 +240,13 @@ function renderHw() {
   const tokens = [...new Set(raw.split(/[\s,;]+/).filter(Boolean).map(t => t.toUpperCase()))];
   let html = '';
   if (tokens.every(t => PC_RE.test(t))) {
-    // Gépenkénti mód: minden gépre pontos egyezés az összes lapon
-    const missing = [];
-    for (const t of tokens) {
-      const key = norm(t); let part = '';
-      for (const d of hwData) {
-        const rows = d.rows.filter(r => r.some(c => norm(c) === key));
-        if (rows.length) part += hwTable(d, rows, `${d.sheet} (${rows.length})`);
-      }
-      if (part) html += `<div class="pc-card"><h2>${esc(t)}</h2>${part}</div>`; else missing.push(t);
-    }
-    const found = tokens.length - missing.length;
-    html = `<p class="summary">${tokens.length} gépet ismertem fel, ebből ${found} szerepel a listában.` +
-      (missing.length ? ` <span class="warn">Nincs találat: ${missing.map(esc).join(', ')}</span>` : '') + '</p>' + html;
+    // Gépenkénti mód: tömör lista (IRO szám, név, IP)
+    hwList = tokens.map(pcSummary);
+    const missing = hwList.filter(r => !r.found).length;
+    html = `<p class="summary">${tokens.length} gépet ismertem fel, ebből ${tokens.length - missing} szerepel a listában.</p>
+      <div class="row"><button class="btn green" id="listCopy">Másolás</button><button class="btn light" id="listXlsx">Excel export</button></div>
+      <table class="compact"><tr><th>IRO szám</th><th>Név</th><th>IP cím</th></tr>` +
+      hwList.map(r => `<tr${r.found ? '' : ' class="miss"'}><td><a href="#" data-pc="${esc(r.iro)}" title="Parancsok ehhez a géphez">${esc(r.iro)}</a></td><td>${esc(r.found ? r.name : 'nincs a listában')}</td><td>${esc(r.ip)}</td></tr>`).join('') + '</table>';
   } else {
     // Szabad szöveges keresés: minden szónak szerepelnie kell a sorban
     const terms = norm(raw).split(/\s+/);
@@ -241,8 +257,17 @@ function renderHw() {
     html = html || '<p class="muted">Nincs találat.</p>';
   }
   $('hwResults').innerHTML = html;
+  if ($('listCopy')) {
+    $('listCopy').onclick = () => copy(['IRO szám\tNév\tIP cím', ...hwList.map(r => [r.iro, r.found ? r.name : 'nincs a listában', r.ip].join('\t'))].join('\n'));
+    $('listXlsx').onclick = () => {
+      const ws = XLSX.utils.aoa_to_sheet([['IRO szám', 'Név', 'IP cím'], ...hwList.map(r => [r.iro, r.found ? r.name : 'nincs a listában', r.ip])]);
+      ws['!cols'] = [{ wch: 12 }, { wch: 28 }, { wch: 16 }];
+      const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Gépek');
+      XLSX.writeFile(wb, `gepek_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    };
+  }
   $('hwResults').querySelectorAll('.hidden-key').forEach(s => s.onclick = () => { s.textContent = s.dataset.v; s.classList.remove('hidden-key'); });
-  $('hwResults').querySelectorAll('[data-pc]').forEach(b => b.onclick = () => { $('pcName').value = b.dataset.pc; renderCmds(); showTab('parancsok'); });
+  $('hwResults').querySelectorAll('[data-pc]').forEach(b => b.onclick = ev => { ev.preventDefault(); $('pcName').value = b.dataset.pc; renderCmds(); showTab('parancsok'); });
 }
 $('hwSearch').oninput = renderHw;
 
