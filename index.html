@@ -216,7 +216,10 @@ $('tplSave').onclick = () => { tplText = $('tplText').value; store.set('template
 renderTplSelect();
 
 // ---------- 4. Mellékek ----------
-let extText = store.get('extensions', 'Minta Péter;IT;1234\nPélda Anna;HR;2345');
+const SAMPLE_EXT = 'Minta Péter;IT;1234\nPélda Anna;HR;2345';
+const DEFAULT_EXT = SAMPLE_EXT; // build.py a private/mellekek.txt tartalmával cseréli
+let extText = store.get('extensions', DEFAULT_EXT);
+if (extText === SAMPLE_EXT) extText = DEFAULT_EXT;
 const parseExt = t => t.split('\n').map(l => l.split(';').map(x => x.trim())).filter(p => p[0]).map(([name, dept = '', ext = '']) => ({ name, dept, ext }));
 function renderExt() {
   const q = norm($('extSearch').value);

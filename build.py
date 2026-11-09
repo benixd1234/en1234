@@ -5,6 +5,12 @@ html = (root / 'index.html').read_text(encoding='utf-8')
 lib = (root / 'lib/xlsx.full.min.js').read_text(encoding='utf-8').replace('</script', '<\\/script')
 tag = '<script src="lib/xlsx.full.min.js"></script>'
 assert tag in html
+priv = root / 'private/mellekek.txt'  # nem kerül a repóba
+if priv.exists():
+    import json
+    old = "const DEFAULT_EXT = SAMPLE_EXT;"
+    assert old in html
+    html = html.replace(old, 'const DEFAULT_EXT = ' + json.dumps(priv.read_text(encoding='utf-8').strip(), ensure_ascii=False) + ';')
 out = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else root / 'dist/helpdesk-seged.html')
 out.parent.mkdir(parents=True, exist_ok=True)
 out.write_text(html.replace(tag, '<script>' + lib + '</script>'), encoding='utf-8')
