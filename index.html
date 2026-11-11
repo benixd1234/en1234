@@ -151,9 +151,10 @@
   <section id="parancsok">
     <h2><i data-icon="terminal"></i>Távoli gép parancsok</h2>
     <div class="row">
-      <input id="pcName" placeholder="Gépnév vagy IP (pl. D231)">
+      <input id="pcName" placeholder="Gépnév, IP, vagy felhasználó (pl. D231, Kiss Csaba, vorosb)">
     </div>
-    <p class="muted">A gomb a kész parancsot a vágólapra teszi, ezt illeszd be egy rendszergazdaként futtatott PowerShell ablakba. A „PowerShell / cmd” jelölésűek a régi cmd-ben is működnek.</p>
+    <div id="pcNote" class="muted" style="margin:-4px 0 4px"></div>
+    <p class="muted">A gomb a kész parancsot a vágólapra teszi, ezt illeszd be egy rendszergazdaként futtatott PowerShell ablakba. A „PowerShell / cmd” jelölésűek a régi cmd-ben is működnek. Felhasználónév vagy login alapján is kereshetsz: a gépnevet a hardverlistából tölti ki (előbb töltsd be a listát a PC-tulajdonos keresőben).</p>
     <div id="cmdList"></div>
   </section>
 </main>
@@ -484,8 +485,28 @@ const CMDS = [
   ['Újraindítás (60 mp múlva)', 'shutdown /r /m \\\\{PC} /t 60 /c "Karbantartás miatt a gép 1 perc múlva újraindul."', 'both'],
   ['Újraindítás visszavonása', 'shutdown /a /m \\\\{PC}', 'both'],
 ];
+// A beírt szöveget gépnévvé oldja fel: gépnév/IP marad, felhasználónév -> gépnév a hardverlistából.
+function resolvePc(raw) {
+  const note = $('pcNote'); note.innerHTML = '';
+  if (!raw) return 'GÉPNÉV';
+  if (!hwData.length) return raw;                       // nincs lista: a beírt szöveget használjuk
+  if (/^\d{1,3}(\.\d{1,3}){1,3}$/.test(raw)) return raw; // IP cím: ahogy van
+  if (pcSummary(raw.toUpperCase()).found) return raw.toUpperCase(); // közvetlen gépnév (IRO)
+  const hits = findByName(raw);
+  if (hits.length === 1) {
+    note.innerHTML = `Felhasználó: <b>${esc(hits[0].name || raw)}</b> &rarr; gép: <b>${esc(hits[0].iro)}</b>`;
+    return hits[0].iro;
+  }
+  if (hits.length > 1) {
+    note.innerHTML = `Több találat, válassz: ` + hits.map(h => `<a href="#" class="pcpick" data-iro="${esc(h.iro)}">${esc(h.iro)}${h.name ? ' – ' + esc(h.name) : ''}</a>`).join(' · ');
+    note.querySelectorAll('.pcpick').forEach(a => a.onclick = e => { e.preventDefault(); $('pcName').value = a.dataset.iro; renderCmds(); });
+    return 'GÉPNÉV';
+  }
+  note.innerHTML = `<span style="color:var(--muted)">Nincs ilyen felhasználó/gép a hardverlistában; a beírt szöveget használom gépnévként.</span>`;
+  return raw;
+}
 function renderCmds() {
-  const pc = $('pcName').value.trim() || 'GÉPNÉV';
+  const pc = resolvePc($('pcName').value.trim());
   $('cmdList').innerHTML = CMDS.map(([l, c, w], i) => `<div class="cmd"><span class="lbl">${esc(l)}<br><span class="tag ${w}">${w === 'ps' ? 'csak PowerShell' : 'PowerShell / cmd'}</span></span><code>${esc(c.replaceAll('{PC}', pc))}</code><button class="btn green" data-i="${i}"><i data-icon="copy"></i>Másol</button></div>`).join('');
   $('cmdList').querySelectorAll('button').forEach(b => b.onclick = () => copy(CMDS[b.dataset.i][1].replaceAll('{PC}', pc)));
   $('cmdList').querySelectorAll('code').forEach(c => { c.style.cursor = 'copy'; c.onclick = () => copy(c.textContent); });
