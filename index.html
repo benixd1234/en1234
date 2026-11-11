@@ -174,6 +174,8 @@
 <div id="toast"></div>
 
 <script src="lib/xlsx.full.min.js"></script>
+<!-- Az inditas.cmd ide írja a friss hardverlistát; ha nincs, a hiba ártalmatlan. -->
+<script src="hardverlista-adat.js"></script>
 <script>
 // ---------- Ikonok (inline SVG, offline) ----------
 const ICONS = {
@@ -446,7 +448,26 @@ $('hwReload').onclick = async () => {
     if (h && (await h.requestPermission({ mode: 'read' })) === 'granted') await readHandle(h);
   } catch (e) { $('hwStatus').textContent = 'Az újratöltés nem sikerült, válaszd ki újra a fájlt.'; }
 };
-(async () => { try { if (window.showOpenFilePicker && await idb('readonly', s => s.get('hwHandle'))) $('hwReload').style.display = ''; } catch {} })();
+// Automatikus betöltés induláskor:
+// 1) ha az inditas.cmd friss adatot hagyott (hardverlista-adat.js), azt töltjük be;
+// 2) különben a megjegyzett fájlt, ha a böngésző már engedélyezte ("Engedélyezés minden látogatáskor").
+(async () => {
+  if (window.HW_XLSB) {
+    try {
+      const bin = atob(HW_XLSB.data), buf = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+      loadWorkbook(buf, `${HW_XLSB.name} (fájl ideje: ${HW_XLSB.time})`);
+      return;
+    } catch {}
+  }
+  try {
+    const h = window.showOpenFilePicker && await idb('readonly', s => s.get('hwHandle'));
+    if (!h) return;
+    $('hwReload').style.display = '';
+    if (await h.queryPermission({ mode: 'read' }) === 'granted') await readHandle(h);
+    else $('hwStatus').textContent = 'Kattints a „Legutóbbi fájl újratöltése” gombra (válaszd az „Engedélyezés minden látogatáskor” opciót, ha felkínálja).';
+  } catch {}
+})();
 
 // ---------- 3. Távoli gép parancsok ----------
 // [címke, parancs, hol fut]: 'both' = PowerShell és cmd, 'ps' = csak PowerShell
