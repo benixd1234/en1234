@@ -126,6 +126,7 @@
   <nav>
     <button data-tab="eszkozok" class="active"><i data-icon="search"></i>PC-tulajdonos kereső</button>
     <button data-tab="parancsok"><i data-icon="terminal"></i>Távoli gép parancsok</button>
+    <button data-tab="cpl"><i data-icon="settings"></i>Vezérlőpult (.cpl)</button>
   </nav>
   <button id="themeBtn" title="Világos / sötét mód"></button>
 </header>
@@ -156,6 +157,14 @@
     <div id="pcNote" class="muted" style="margin:-4px 0 4px"></div>
     <p class="muted">A gomb a kész parancsot a vágólapra teszi, ezt illeszd be egy rendszergazdaként futtatott PowerShell ablakba. A „PowerShell / cmd” jelölésűek a régi cmd-ben is működnek. Felhasználónév vagy login alapján is kereshetsz: a gépnevet a hardverlistából tölti ki (előbb töltsd be a listát a PC-tulajdonos keresőben).</p>
     <div id="cmdList"></div>
+  </section>
+
+  <!-- 3b. Vezérlőpult (.cpl) parancsok -->
+  <section id="cpl">
+    <h2><i data-icon="settings"></i>Vezérlőpult (.cpl)</h2>
+    <p class="muted">Vezérlőpult-appletek gyorsindítói. A gomb a parancsot a vágólapra teszi; illeszd be a Futtatás ablakba (Win+R), vagy egy rendszergazdaként futtatott PowerShell/cmd ablakba. Kattints a parancsra is a másoláshoz.</p>
+    <input id="cplSearch" placeholder="Szűrés (pl. hálózat, program, hang)">
+    <div id="cplList" style="margin-top:8px"></div>
   </section>
 </main>
 
@@ -193,6 +202,7 @@ const ICONS = {
   sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   moon:'<path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5"/>',
   user:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+  settings:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1"/>',
 };
 function icons(root) {
   (root || document).querySelectorAll('i[data-icon]:not(.ic)').forEach(i => {
@@ -513,6 +523,45 @@ function renderCmds() {
 }
 $('pcName').oninput = renderCmds;
 renderCmds();
+
+// ---------- 3b. Vezérlőpult (.cpl) parancsok ----------
+// [parancs, címke]
+const CPL = [
+  ['appwiz.cpl', 'Programok és szolgáltatások (telepítés/eltávolítás)'],
+  ['OptionalFeatures', 'Windows szolgáltatások be/ki'],
+  ['ncpa.cpl', 'Hálózati kapcsolatok (adapterek)'],
+  ['sysdm.cpl', 'Rendszer tulajdonságok'],
+  ['SystemPropertiesAdvanced', 'Rendszer → Speciális (környezeti változók)'],
+  ['SystemPropertiesRemote', 'Rendszer → Távoli asztal beállítások'],
+  ['inetcpl.cpl', 'Internetbeállítások'],
+  ['desk.cpl', 'Képernyő / megjelenítés'],
+  ['main.cpl', 'Egér'],
+  ['mmsys.cpl', 'Hang (lejátszás/felvétel eszközök)'],
+  ['powercfg.cpl', 'Energiagazdálkodás'],
+  ['firewall.cpl', 'Windows Defender tűzfal'],
+  ['wscui.cpl', 'Biztonság és karbantartás'],
+  ['timedate.cpl', 'Dátum és idő'],
+  ['intl.cpl', 'Terület és nyelv'],
+  ['hdwwiz.cpl', 'Hardver hozzáadása varázsló'],
+  ['netplwiz', 'Felhasználói fiókok (automatikus bejelentkezés)'],
+  ['control userpasswords2', 'Felhasználói fiókok (haladó)'],
+  ['control admintools', 'Felügyeleti eszközök'],
+  ['control', 'Vezérlőpult (klasszikus nézet)'],
+  ['devmgmt.msc', 'Eszközkezelő'],
+  ['services.msc', 'Szolgáltatások'],
+  ['compmgmt.msc', 'Számítógép-kezelés'],
+];
+function renderCpl() {
+  const q = norm($('cplSearch').value.trim());
+  const list = CPL.filter(([c, l]) => !q || norm(c + ' ' + l).includes(q));
+  $('cplList').innerHTML = list.length
+    ? list.map(([c, l]) => `<div class="cmd"><span class="lbl">${esc(l)}</span><code>${esc(c)}</code><button class="btn green" data-c="${esc(c)}"><i data-icon="copy"></i>Másol</button></div>`).join('')
+    : '<p class="muted">Nincs találat.</p>';
+  $('cplList').querySelectorAll('button').forEach(b => b.onclick = () => copy(b.dataset.c));
+  $('cplList').querySelectorAll('code').forEach(c => { c.style.cursor = 'copy'; c.onclick = () => copy(c.textContent); });
+}
+$('cplSearch').oninput = renderCpl;
+renderCpl();
 </script>
 </body>
 </html>
